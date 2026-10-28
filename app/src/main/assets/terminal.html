@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>IP Logger</title>
+<link rel="stylesheet" href="vendor/xterm.css" />
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-fit.js"></script>
+<script>
+  if (typeof Terminal === "undefined") {
+    document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">');
+    document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></scr' + 'ipt>');
+  }
+  if (typeof FitAddon === "undefined") {
+    document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></scr' + 'ipt>');
+  }
+</script>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#0b0f14; overflow:hidden; }
+  #wrap { position:absolute; inset:0; padding:10px 4px 4px 6px; box-sizing:border-box; }
+  .xterm .xterm-viewport::-webkit-scrollbar { width:6px; }
+  .xterm .xterm-viewport::-webkit-scrollbar-thumb { background:#2a3a4a; border-radius:3px; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="term"></div></div>
+<script>
+(function () {
+  if (typeof Terminal === "undefined") {
+    document.getElementById("wrap").innerHTML =
+      '<pre style="color:#ff6b6b;font-family:monospace;white-space:pre-wrap;padding:10px">' +
+      'No se pudo cargar el motor de terminal.\nConecta el dispositivo a Internet y reabre la app.</pre>';
+    return;
+  }
+
+  var fit = new FitAddon.FitAddon();
+  var term = new Terminal({
+    cursorBlink: true,
+    fontSize: 11,
+    lineHeight: 1.15,
+    fontFamily: '"DejaVu Sans Mono","Roboto Mono",monospace',
+    theme: {
+      background: "#0b0f14", foreground: "#c9d6e2", cursor: "#38e08b",
+      selectionBackground: "#26506b", black: "#0b0f14", brightBlack: "#4a5a6a"
+    },
+    scrollback: 8000,
+    allowProposedApi: true
+  });
+  term.loadAddon(fit);
+  term.open(document.getElementById("term"));
+
+  function resize() {
+    try {
+      fit.fit();
+      if (window.Android && Android.size) Android.size(term.cols, term.rows);
+    } catch (e) {}
+  }
+  setTimeout(function () { resize(); term.focus(); }, 80);
+  window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", function () { setTimeout(resize, 250); });
+
+  var buf = "";
+  term.onData(function (data) {
+    for (var i = 0; i < data.length; i++) {
+      var ch = data[i];
+      if (ch === "\r" || ch === "\n") {
+        term.write("\r\n");
+        var line = buf; buf = "";
+        try { Android.line(line); } catch (e) {}
+      } else if (ch === "\u007f" || ch === "\b") {
+        if (buf.length > 0) { buf = buf.slice(0, -1); term.write("\b \b"); }
+      } else if (ch >= " ") {
+        buf += ch; term.write(ch);
+      }
+    }
+  });
+
+  window.termWrite = function (s) {
+    term.write(String(s).replace(/\r?\n/g, "\r\n"));
+  };
+
+  try { Android.ready(); } catch (e) {}
+})();
+</script>
+</body>
+  </html>
